@@ -360,7 +360,8 @@
 
     .modal-toggle,
     .view-radio,
-    .ring-radio {
+    .ring-radio,
+    .display-mode-radio {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -386,7 +387,8 @@
     .modal-close:focus-visible,
     .modal-close-text:focus-visible,
     .view-controls label:focus-visible,
-    .ring-controls label:focus-visible {
+    .ring-controls label:focus-visible,
+    .mode-controls label:focus-visible {
       outline: 2px solid var(--gold-light);
       outline-offset: 3px;
     }
@@ -472,7 +474,8 @@
     }
 
     .modal-view-radio,
-    .ring-radio {
+    .ring-radio,
+    .display-mode-radio {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -486,17 +489,20 @@
     }
 
     .view-controls,
-    .ring-controls {
+    .ring-controls,
+    .mode-controls {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(6, minmax(0, 1fr));
       gap: 7px;
       margin-top: 14px;
     }
 
     .ring-controls { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .mode-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
     .view-controls label,
     .ring-controls label,
+    .mode-controls label,
     .modal-close-text {
       min-height: 44px;
       display: flex;
@@ -519,6 +525,9 @@
     .modal-view-radio[value="gegenseite"]:checked ~ .view-controls label[for$="-gegenseite"],
     .modal-view-radio[value="hinten"]:checked ~ .view-controls label[for$="-hinten"],
     .modal-view-radio[value="oben"]:checked ~ .view-controls label[for$="-oben"],
+    .modal-view-radio[value="3d"]:checked ~ .view-controls label[for$="-3d"],
+    .display-mode-radio[value="image"]:checked ~ .mode-controls label[for$="-image"],
+    .display-mode-radio[value="3d"]:checked ~ .mode-controls label[for$="-3d"],
     .ring-radio[value="schwarz"]:checked ~ .ring-controls label[for$="-schwarz"],
     .ring-radio[value="silber"]:checked ~ .ring-controls label[for$="-silber"],
     .ring-radio[value="gold"]:checked ~ .ring-controls label[for$="-gold"] {
@@ -532,6 +541,9 @@
     .modal-view-radio[value="gegenseite"]:focus-visible ~ .view-controls label[for$="-gegenseite"],
     .modal-view-radio[value="hinten"]:focus-visible ~ .view-controls label[for$="-hinten"],
     .modal-view-radio[value="oben"]:focus-visible ~ .view-controls label[for$="-oben"],
+    .modal-view-radio[value="3d"]:focus-visible ~ .view-controls label[for$="-3d"],
+    .display-mode-radio[value="image"]:focus-visible ~ .mode-controls label[for$="-image"],
+    .display-mode-radio[value="3d"]:focus-visible ~ .mode-controls label[for$="-3d"],
     .ring-radio[value="schwarz"]:focus-visible ~ .ring-controls label[for$="-schwarz"],
     .ring-radio[value="silber"]:focus-visible ~ .ring-controls label[for$="-silber"],
     .ring-radio[value="gold"]:focus-visible ~ .ring-controls label[for$="-gold"] {
@@ -592,6 +604,44 @@
     .ring-radio[value="schwarz"]:checked ~ .ring-gallery img.ring-schwarz,
     .ring-radio[value="silber"]:checked ~ .ring-gallery img.ring-silber,
     .ring-radio[value="gold"]:checked ~ .ring-gallery img.ring-gold {
+      display: block;
+    }
+
+    .waffen3d {
+      position: relative;
+      width: 100%;
+      height: clamp(260px, 52vh, 460px);
+      display: none;
+      flex: 0 0 auto;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background:
+        radial-gradient(ellipse at 50% 56%, rgba(197, 154, 85, .12), transparent 60%),
+        #242522;
+      touch-action: pan-y;
+    }
+
+    .modal-view-radio[value="3d"]:checked ~ .view-gallery,
+    .display-mode-radio[value="3d"]:checked ~ .single-gallery,
+    .display-mode-radio[value="3d"]:checked ~ .ring-gallery {
+      display: none;
+    }
+
+    .modal-view-radio[value="3d"]:checked ~ .waffen3d,
+    .display-mode-radio[value="3d"]:checked ~ .waffen3d,
+    .display-mode-radio[value="3d"]:checked ~ .ring-viewers {
+      display: block;
+    }
+
+    .ring-viewers {
+      display: none;
+    }
+
+    .ring-viewers .waffen3d { display: none; }
+
+    .ring-radio[value="schwarz"]:checked ~ .ring-viewers [data-model="modelle/schlagring_schwarz.json"],
+    .ring-radio[value="silber"]:checked ~ .ring-viewers [data-model="modelle/schlagring_silber.json"],
+    .ring-radio[value="gold"]:checked ~ .ring-viewers [data-model="modelle/schlagring_gold.json"] {
       display: block;
     }
 
@@ -1498,5 +1548,139 @@
       });
     })();
   </script>
+  <script>
+    (() => {
+      function requiredElement(root, selector, context) {
+        const element = root.querySelector(selector);
+        if (!element) throw new Error(`Element für 3D-Ansicht fehlt (${context}: ${selector})`);
+        return element;
+      }
+
+      function createRadio(className, id, name, value, checked) {
+        const radio = document.createElement('input');
+        radio.className = className;
+        radio.type = 'radio';
+        radio.id = id;
+        radio.name = name;
+        radio.value = value;
+        radio.checked = Boolean(checked);
+        return radio;
+      }
+
+      function addViewer(visual, model, label) {
+        const viewer = document.createElement('div');
+        viewer.className = 'waffen3d';
+        viewer.dataset.model = `modelle/${model}.json`;
+        viewer.setAttribute('aria-label', label);
+        visual.append(viewer);
+        return viewer;
+      }
+
+      function addModeControl(controls, id, text) {
+        const label = document.createElement('label');
+        label.htmlFor = id;
+        label.textContent = text;
+        controls.append(label);
+      }
+
+      [
+        { id: 'p88', title: 'P88', model: 'p88_waffe' },
+        { id: 'p88-magazin', title: 'P88 Magazin', model: 'p88_magazin' },
+        { id: 'l115a3', title: 'L115A3', model: 'l115a3_waffe' },
+        { id: 'l115a3-magazin', title: 'L115A3 Magazin', model: 'l115a3_magazin' }
+      ].forEach(({ id, title, model }) => {
+        const dialog = requiredElement(document, `#dialog-${id}`, title);
+        const visual = requiredElement(dialog, '.modal-visual', title);
+        const gallery = requiredElement(visual, '.view-gallery', title);
+        const controls = requiredElement(visual, '.view-controls', title);
+        const radio = createRadio('modal-view-radio', `angle-${id}-3d`, `angle-${id}`, '3d', false);
+        visual.insertBefore(radio, gallery);
+        gallery.after(addViewer(visual, model, `Drehbare 3D-Ansicht: ${title}`));
+        addModeControl(controls, radio.id, '3D');
+      });
+
+      [
+        { id: 'baseballschl-ger', title: 'Baseballschläger', model: 'baseballschlaeger' },
+        { id: 'messer', title: 'Messer', model: 'messer' }
+      ].forEach(({ id, title, model }) => {
+        const dialog = requiredElement(document, `#dialog-${id}`, title);
+        const visual = requiredElement(dialog, '.modal-visual', title);
+        const gallery = requiredElement(visual, '.single-gallery', title);
+        const modeName = `mode-${id}`;
+        const imageRadio = createRadio('display-mode-radio', `${modeName}-image`, modeName, 'image', true);
+        const viewerRadio = createRadio('display-mode-radio', `${modeName}-3d`, modeName, '3d', false);
+        visual.insertBefore(imageRadio, gallery);
+        visual.insertBefore(viewerRadio, gallery);
+        gallery.after(addViewer(visual, model, `Drehbare 3D-Ansicht: ${title}`));
+
+        const controls = document.createElement('div');
+        controls.className = 'mode-controls';
+        controls.setAttribute('role', 'group');
+        controls.setAttribute('aria-label', 'Ansicht wählen');
+        addModeControl(controls, imageRadio.id, 'Bild');
+        addModeControl(controls, viewerRadio.id, '3D');
+        visual.append(controls);
+      });
+
+      {
+        const title = 'Schlagring';
+        const dialog = requiredElement(document, '#dialog-schlagring', title);
+        const visual = requiredElement(dialog, '.modal-visual', title);
+        const gallery = requiredElement(visual, '.ring-gallery', title);
+        const colorRadios = visual.querySelectorAll('.ring-radio');
+        if (colorRadios.length !== 3) throw new Error('Die drei Schlagring-Farben wurden nicht gefunden.');
+        const modeName = 'mode-schlagring';
+        const imageRadio = createRadio('display-mode-radio', `${modeName}-image`, modeName, 'image', true);
+        const viewerRadio = createRadio('display-mode-radio', `${modeName}-3d`, modeName, '3d', false);
+        visual.insertBefore(imageRadio, gallery);
+        visual.insertBefore(viewerRadio, gallery);
+
+        const viewers = document.createElement('div');
+        viewers.className = 'ring-viewers';
+        [
+          ['schwarz', 'Schwarz'],
+          ['silber', 'Silber'],
+          ['gold', 'Gold']
+        ].forEach(([color, colorLabel]) => {
+          const viewer = document.createElement('div');
+          viewer.className = 'waffen3d';
+          viewer.dataset.model = `modelle/schlagring_${color}.json`;
+          viewer.setAttribute('aria-label', `Drehbare 3D-Ansicht: Schlagring ${colorLabel}`);
+          viewers.append(viewer);
+        });
+        gallery.after(viewers);
+
+        const colorControls = requiredElement(visual, '.ring-controls', title);
+        const modeControls = document.createElement('div');
+        modeControls.className = 'mode-controls';
+        modeControls.setAttribute('role', 'group');
+        modeControls.setAttribute('aria-label', 'Ansicht wählen');
+        addModeControl(modeControls, imageRadio.id, 'Bild');
+        addModeControl(modeControls, viewerRadio.id, '3D');
+        colorControls.after(modeControls);
+      }
+
+      function returnToImage(viewer) {
+        const visual = viewer.closest('.modal-visual');
+        if (!visual) return;
+        const radio = visual.querySelector('.modal-view-radio[value="schraeg"], .display-mode-radio[value="image"]');
+        if (radio && !radio.checked) {
+          radio.checked = true;
+          radio.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+
+      document.addEventListener('waffen3d:error', (event) => returnToImage(event.target), true);
+      const viewerFailureObserver = new MutationObserver((records) => {
+        records.forEach(({ target }) => {
+          if (target.dataset.state === 'failed') returnToImage(target);
+        });
+      });
+      document.querySelectorAll('.waffen3d[data-model]').forEach((viewer) => {
+        viewerFailureObserver.observe(viewer, { attributes: true, attributeFilter: ['data-state'] });
+      });
+    })();
+  </script>
+  <script src="viewer3d.js" defer></script>
 </body>
 </html>
