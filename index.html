@@ -359,6 +359,7 @@
     }
 
     .modal-toggle,
+    .disclaimer-toggle,
     .view-radio,
     .ring-radio {
       position: absolute;
@@ -389,6 +390,81 @@
     .ring-controls label:focus-visible {
       outline: 2px solid var(--gold-light);
       outline-offset: 3px;
+    }
+
+    .disclaimer-footer-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 10px;
+    }
+
+    .disclaimer-trigger {
+      display: inline-flex;
+      min-height: 36px;
+      align-items: center;
+      padding: 5px 10px;
+      border: 1px solid rgba(197, 154, 85, .18);
+      color: #aaa69c;
+      font-size: .68rem;
+      cursor: pointer;
+    }
+
+    .disclaimer-trigger:hover { color: var(--gold-light); }
+
+    .disclaimer-toggle:focus-visible ~ .disclaimer-trigger,
+    .disclaimer-close:focus-visible {
+      outline: 2px solid var(--gold-light);
+      outline-offset: 3px;
+    }
+
+    .disclaimer-overlay {
+      position: fixed;
+      z-index: 60;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+
+    .disclaimer-toggle:checked ~ .disclaimer-overlay { display: flex; }
+
+    .disclaimer-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, .78);
+      cursor: pointer;
+    }
+
+    .disclaimer-dialog {
+      position: relative;
+      z-index: 1;
+      width: min(100%, 420px);
+      padding: 22px 24px;
+      border: 1px solid rgba(197, 154, 85, .3);
+      background: var(--panel);
+      color: #c8c5bc;
+    }
+
+    .disclaimer-dialog p {
+      margin: 0;
+      padding-right: 24px;
+      font-size: .82rem;
+      line-height: 1.6;
+    }
+
+    .disclaimer-close {
+      position: absolute;
+      top: 7px;
+      right: 7px;
+      display: inline-flex;
+      width: 36px;
+      height: 36px;
+      align-items: center;
+      justify-content: center;
+      color: #aaa69c;
+      font-size: 1.2rem;
+      cursor: pointer;
     }
 
     .modal-open img {
@@ -1430,6 +1506,17 @@
       <span>Waffen · Munition · Ausrüstung · Persönlich und verantwortungsvoll</span>
       <a href="mitarbeiter.html">Unser Team</a>
       <a href="kooperationen.html">Kooperationen</a>
+    </div>
+    <div class="container disclaimer-footer-row">
+      <input class="modal-toggle disclaimer-toggle" type="checkbox" id="footer-disclaimer-toggle" aria-label="Hinweis öffnen" aria-controls="footer-disclaimer-dialog">
+      <label class="disclaimer-trigger" for="footer-disclaimer-toggle">Hinweis</label>
+      <div class="disclaimer-overlay">
+        <label class="disclaimer-backdrop" for="footer-disclaimer-toggle" aria-label="Hinweis schließen"></label>
+        <div class="disclaimer-dialog" id="footer-disclaimer-dialog" role="dialog" aria-modal="true" aria-label="Hinweis">
+          <label class="disclaimer-close" for="footer-disclaimer-toggle" aria-label="Hinweis schließen">×</label>
+          <p>Diese Website stellt ein fiktives Unternehmen im Rahmen eines Roleplays dar. Es handelt sich um keinen realen Waffenhandel. Alle Inhalte sind rein fiktiv und dienen ausschließlich dem Spiel.</p>
+        </div>
+      </div>
     </div>
   </footer>
 </body>
