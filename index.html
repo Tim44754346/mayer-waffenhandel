@@ -913,9 +913,29 @@
 
     .copy-row {
       display: flex;
+      width: 100%;
+      min-width: 0;
       align-items: stretch;
       gap: 8px;
     }
+
+    .copy-row .copy-value { width: auto; }
+
+    .copy-button {
+      min-width: 96px;
+      min-height: 44px;
+      padding: 8px 13px;
+      border: 1px solid rgba(197, 154, 85, .48);
+      border-radius: 0;
+      background: rgba(197, 154, 85, .08);
+      color: var(--gold-light);
+      font: inherit;
+      font-size: .78rem;
+      cursor: pointer;
+    }
+
+    .copy-button:hover { background: rgba(197, 154, 85, .16); }
+    .copy-button:focus-visible { outline: 2px solid var(--gold-light); outline-offset: 3px; }
 
     .copy-value {
       min-width: 0;
@@ -935,6 +955,8 @@
       color: #c8b38e;
       font-size: .76rem;
     }
+
+    .copy-status[data-error="true"] { color: #e7a49b; }
 
     .site-footer {
       padding-block: 24px;
@@ -989,7 +1011,7 @@
       .permit { min-height: 43px; font-size: .67rem; }
       .notice { grid-template-columns: 36px 1fr; gap: 12px; padding: 16px; }
       .notice-icon { width: 34px; height: 34px; }
-      .about-grid { grid-template-columns: 1fr; gap: 25px; }
+      .about-grid { grid-template-columns: minmax(0, 1fr); gap: 25px; }
       .license-panel { padding: 21px; }
       .team-card { grid-template-columns: 1fr; }
       .team-portrait { min-height: 320px; max-height: 430px; }
@@ -1406,7 +1428,8 @@
           <p>Standort und Termine nach Absprache</p>
           <label class="team-contact-label" for="laden-telefon">Telefon</label>
           <input class="copy-value" id="laden-telefon" type="text" value="74526" readonly aria-label="Telefonnummer von Mayer Waffenhandel">
-          <p class="copy-hint">Zum Kopieren das Feld antippen und den Wert auswählen.</p>
+          <p class="copy-hint">Telefonnummer mit „Kopieren“ direkt in die Zwischenablage übernehmen.</p>
+          <p class="copy-status" role="status" aria-live="polite"></p>
           <p class="legal-small">Waffen, Munition und Ausrüstung · Beratung und Abgabe nur mit der jeweils erforderlichen Berechtigung.</p>
         </div>
       </div>
@@ -1422,5 +1445,58 @@
       <a href="kooperationen.html">Kooperationen</a>
     </div>
   </footer>
+  <script>
+    (() => {
+      function fallbackCopy(input) {
+        input.focus();
+        input.select();
+        input.setSelectionRange(0, input.value.length);
+        return document.execCommand('copy');
+      }
+
+      async function copyValue(input, status, button) {
+        status.removeAttribute('data-error');
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(input.value);
+            status.textContent = 'In die Zwischenablage kopiert.';
+            return;
+          }
+        } catch {}
+
+        try {
+          if (fallbackCopy(input)) {
+            status.textContent = 'In die Zwischenablage kopiert.';
+            button.focus();
+            return;
+          }
+        } catch {}
+
+        input.focus();
+        input.select();
+        input.setSelectionRange(0, input.value.length);
+        status.dataset.error = 'true';
+        status.textContent = 'Kopieren nicht möglich. Der Wert ist markiert – bitte manuell kopieren.';
+      }
+
+      document.querySelectorAll('.copy-value[readonly]').forEach((input) => {
+        const row = document.createElement('div');
+        row.className = 'copy-row';
+        input.parentNode.insertBefore(row, input);
+        row.append(input);
+
+        const button = document.createElement('button');
+        button.className = 'copy-button';
+        button.type = 'button';
+        button.textContent = 'Kopieren';
+        button.setAttribute('aria-label', `Wert kopieren: ${input.getAttribute('aria-label') || 'Kontaktangabe'}`);
+        row.append(button);
+
+        const container = input.closest('.contact-item, .license-panel, .partner-contact');
+        const status = container.querySelector('.copy-status');
+        button.addEventListener('click', () => copyValue(input, status, button));
+      });
+    })();
+  </script>
 </body>
 </html>

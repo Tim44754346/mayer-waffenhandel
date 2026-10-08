@@ -283,11 +283,45 @@
       box-shadow: 0 0 0 2px rgba(197, 154, 85, .14);
     }
 
+    .copy-row {
+      display: flex;
+      width: 100%;
+      min-width: 0;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    .copy-row .copy-value { width: auto; min-width: 0; flex: 1; }
+
+    .copy-button {
+      min-width: 96px;
+      min-height: 44px;
+      padding: 8px 13px;
+      border: 1px solid rgba(197, 154, 85, .48);
+      background: rgba(197, 154, 85, .08);
+      color: var(--gold-light);
+      font: inherit;
+      font-size: .78rem;
+      cursor: pointer;
+    }
+
+    .copy-button:hover { background: rgba(197, 154, 85, .16); }
+    .copy-button:focus-visible { outline: 2px solid var(--gold-light); outline-offset: 3px; }
+
     .copy-hint {
       margin: 13px 0 0;
       color: #85837c;
       font-size: .72rem;
     }
+
+    .copy-status {
+      min-height: 1.5em;
+      margin: 8px 0 0;
+      color: #c8b38e;
+      font-size: .76rem;
+    }
+
+    .copy-status[data-error="true"] { color: #e7a49b; }
 
     .site-footer {
       padding-block: 24px;
@@ -402,7 +436,8 @@
                 <dd><input class="copy-value" type="text" value="6900267795" readonly aria-label="IBAN von Tim Mayer"></dd>
               </div>
             </dl>
-            <p class="copy-hint">Zum Kopieren das Feld gedrückt halten, den Wert auswählen und „Kopieren“ antippen.</p>
+            <p class="copy-hint">Telefonnummer und IBAN mit „Kopieren“ direkt in die Zwischenablage übernehmen.</p>
+            <p class="copy-status" role="status" aria-live="polite"></p>
           </div>
         </article>
       </div>
@@ -415,5 +450,57 @@
       <a href="kooperationen.html">Kooperationen</a>
     </div>
   </footer>
+  <script>
+    (() => {
+      function fallbackCopy(input) {
+        input.focus();
+        input.select();
+        input.setSelectionRange(0, input.value.length);
+        return document.execCommand('copy');
+      }
+
+      async function copyValue(input, status, button) {
+        status.removeAttribute('data-error');
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(input.value);
+            status.textContent = 'In die Zwischenablage kopiert.';
+            return;
+          }
+        } catch {}
+
+        try {
+          if (fallbackCopy(input)) {
+            status.textContent = 'In die Zwischenablage kopiert.';
+            button.focus();
+            return;
+          }
+        } catch {}
+
+        input.focus();
+        input.select();
+        input.setSelectionRange(0, input.value.length);
+        status.dataset.error = 'true';
+        status.textContent = 'Kopieren nicht möglich. Der Wert ist markiert – bitte manuell kopieren.';
+      }
+
+      document.querySelectorAll('.copy-value[readonly]').forEach((input) => {
+        const row = document.createElement('div');
+        row.className = 'copy-row';
+        input.parentNode.insertBefore(row, input);
+        row.append(input);
+
+        const button = document.createElement('button');
+        button.className = 'copy-button';
+        button.type = 'button';
+        button.textContent = 'Kopieren';
+        button.setAttribute('aria-label', `Wert kopieren: ${input.getAttribute('aria-label') || 'Kontaktangabe'}`);
+        row.append(button);
+
+        const status = input.closest('.staff-details').querySelector('.copy-status');
+        button.addEventListener('click', () => copyValue(input, status, button));
+      });
+    })();
+  </script>
 </body>
 </html>
