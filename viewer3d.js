@@ -1,28 +1,3 @@
-/*
- * Waffen3D – kleiner 3D-Betrachter ohne Abhängigkeiten (kein three.js nötig).
- *
- * - Zeichnet mit WebGL. Gibt es kein WebGL (z. B. Browser ohne GPU),
- *   springt automatisch ein Software-Renderer auf einem normalen Canvas ein.
- * - Bedienung: Ziehen = Drehen, Mausrad / zwei Finger = Zoomen, Doppeltippen = Zurücksetzen.
- * - Modelle werden erst geladen, wenn der Container das erste Mal sichtbar ist
- *   (z. B. wenn ein Fenster geöffnet wird).
- *
- * Einbinden:
- *   <script src="viewer3d.js"></script>
- *   <div class="waffen3d" data-model="modelle/p88_waffe.json"></div>
- *
- * Der Container braucht eine Größe (z. B. height: 360px). Optionale Attribute:
- *   data-autorotate="false"   keine automatische Drehung
- *   data-renderer="auto|webgl|canvas"
- *   data-yaw / data-pitch / data-zoom   Startansicht überschreiben
- *
- * Status am Container: data-state = loading | ready | failed
- *                      data-renderer-used = webgl | canvas
- * Ereignisse (am Container): waffen3d:ready, waffen3d:error
- *
- * Eigenes Mounten:  const v = Waffen3D.mount(element, { src: '...json' });
- *                   v.reset(); v.setAutorotate(true); v.destroy();
- */
 (function (global) {
   'use strict';
 
