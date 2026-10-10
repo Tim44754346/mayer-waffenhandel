@@ -1,0 +1,34 @@
+:root {
+  color-scheme: dark;
+  --ink: #f3f0e9;
+  --muted: #a6a49d;
+  --gold: #c59a55;
+  --gold-light: #e2bd7a;
+  --panel: #20211f;
+  --line: rgba(233, 223, 201, .13);
+  --background: #171817;
+  --max-width: 1160px;
+}
+
+* { box-sizing: border-box; }
+
+.container { width: min(var(--max-width), calc(100% - 48px)); margin-inline: auto; }
+.site-header { position: sticky; z-index: 5; top: 0; border-bottom: 1px solid var(--line); background: #171817; }
+.header-inner { min-height: 78px; display: flex; align-items: center; justify-content: space-between; gap: 28px; }
+.brand { display: inline-flex; align-items: center; gap: 13px; text-decoration: none; }
+.brand-mark { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid rgba(197, 154, 85, .48); border-radius: 3px; color: var(--gold-light); background: linear-gradient(145deg, rgba(197, 154, 85, .13), rgba(197, 154, 85, .025)); }
+.brand-mark svg { width: 28px; height: 28px; }
+.brand-name { display: block; font-family: Georgia, "Times New Roman", serif; font-size: 1.18rem; font-weight: 700; letter-spacing: .035em; line-height: 1.2; }
+.brand-caption { display: block; margin-top: 4px; color: var(--muted); font-size: .65rem; letter-spacing: .17em; text-transform: uppercase; }
+.main-nav { display: flex; align-items: center; gap: 31px; }
+.main-nav a { color: #d0cec7; font-size: .86rem; text-decoration: none; }
+.main-nav a:hover, .main-nav a[aria-current="page"] { color: var(--gold-light); }
+.footer-inner { display: flex; justify-content: space-between; gap: 20px; }
+.copy-row { display: flex; width: 100%; min-width: 0; align-items: stretch; gap: 8px; }
+.copy-row .copy-value { width: auto; min-width: 0; flex: 1; }
+.copy-button { min-width: 96px; min-height: 44px; padding: 8px 13px; border: 1px solid rgba(197, 154, 85, .48); background: rgba(197, 154, 85, .08); color: var(--gold-light); font: inherit; font-size: .78rem; cursor: pointer; }
+.copy-button:hover { background: rgba(197, 154, 85, .16); }
+.copy-button:focus-visible { outline: 2px solid var(--gold-light); outline-offset: 3px; }
+.copy-value { padding: 9px 11px; border: 1px solid rgba(197, 154, 85, .28); background: #171816; color: var(--gold-light); font: inherit; font-size: 1rem; user-select: all; }
+.copy-status { min-height: 1.5em; margin: 8px 0 0; color: #c8b38e; font-size: .76rem; }
+.copy-status[data-error="true"] { color: #e7a49b; }

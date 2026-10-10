@@ -1,0 +1,51 @@
+[
+  {
+    "id": "p88",
+    "name": "P88",
+    "price": 1150,
+    "permit": "klein",
+    "category": "Kurzwaffe"
+  },
+  {
+    "id": "p88-magazin",
+    "name": "P88 Magazin",
+    "price": 22,
+    "permit": "klein",
+    "category": "Zubehör"
+  },
+  {
+    "id": "l115a3",
+    "name": "L115A3",
+    "price": 2150,
+    "permit": "gross",
+    "category": "Präzisionsgewehr"
+  },
+  {
+    "id": "l115a3-magazin",
+    "name": "L115A3 Magazin",
+    "price": 22,
+    "permit": "gross",
+    "category": "Zubehör"
+  },
+  {
+    "id": "baseballschlaeger",
+    "name": "Baseballschläger",
+    "price": 110,
+    "permit": "klein",
+    "category": "Nahkampf"
+  },
+  {
+    "id": "messer",
+    "name": "Messer",
+    "price": 175,
+    "permit": "klein",
+    "category": "Nahkampf"
+  },
+  {
+    "id": "schlagring",
+    "name": "Schlagring",
+    "price": 230,
+    "permit": "klein",
+    "category": "Nahkampf"
+  }
+]

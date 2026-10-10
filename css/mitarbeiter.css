@@ -1,0 +1,266 @@
+/* Page-specific form sizing retained from the original stylesheet. */
+.copy-value { width: 100%; min-height: 42px; border-radius: 0; outline: none; }
+
+    html {  }
+
+    :target { scroll-margin-top: 96px; }
+
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+      background:
+        radial-gradient(ellipse at 78% 5%, rgba(130, 99, 53, .11), transparent 34rem),
+        var(--background);
+      color: var(--ink);
+      font-family: "Segoe UI", Arial, sans-serif;
+      line-height: 1.6;
+    }
+
+
+    a { color: inherit; }
+
+
+    .main-nav .nav-contact {
+      padding: 10px 16px;
+      border: 1px solid rgba(197, 154, 85, .64);
+      color: var(--gold-light);
+    }
+
+
+    main { flex: 1; }
+
+
+    .page-intro {
+      padding-block: 72px 30px;
+    }
+
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      margin: 0 0 14px;
+      color: var(--gold-light);
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+
+    .eyebrow::before {
+      width: 27px;
+      height: 1px;
+      background: var(--gold);
+      content: "";
+    }
+
+
+    h1, h2, p { margin-top: 0; }
+
+
+    h1, h2 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 500;
+      letter-spacing: -.025em;
+    }
+
+
+    h1 {
+      margin-bottom: 15px;
+      font-size: clamp(2.6rem, 6vw, 4.4rem);
+      line-height: 1.05;
+    }
+
+
+    .intro {
+      max-width: 640px;
+      margin-bottom: 0;
+      color: #bbb8ae;
+      font-size: .98rem;
+    }
+
+
+    .staff-section {
+      padding-block: 0 82px;
+    }
+
+
+    .staff-card {
+      display: grid;
+      grid-template-columns: minmax(270px, .88fr) 1.12fr;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      
+    }
+
+
+    .portrait {
+      position: relative;
+      min-height: 420px;
+      overflow: hidden;
+      background: #252622;
+    }
+
+
+    .portrait::after {
+      position: absolute;
+      inset: 45% 0 0;
+      background: linear-gradient(transparent, rgba(17, 18, 17, .72));
+      content: "";
+      pointer-events: none;
+    }
+
+
+    .portrait img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: 50% 43%;
+    }
+
+
+    .portrait-caption {
+      position: absolute;
+      z-index: 1;
+      right: 20px;
+      bottom: 17px;
+      left: 20px;
+      color: #f3f0e9;
+      font-size: .74rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+
+    .staff-details {
+      align-self: center;
+      padding: clamp(26px, 5vw, 54px);
+    }
+
+
+    .staff-role {
+      margin-bottom: 7px;
+      color: var(--gold-light);
+      font-size: .73rem;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+
+    h2 {
+      margin-bottom: 15px;
+      font-size: clamp(2.1rem, 4vw, 3rem);
+      line-height: 1.1;
+    }
+
+
+    .staff-bio {
+      max-width: 460px;
+      margin-bottom: 27px;
+      color: #bbb8ae;
+      font-size: .92rem;
+    }
+
+
+    .contact-list {
+      display: grid;
+      gap: 13px;
+    }
+
+
+    .contact-item {
+      padding: 15px 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .018);
+    }
+
+
+    .contact-item dt {
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+
+    .contact-item dd { margin: 0; }
+
+
+    .copy-value:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 2px rgba(197, 154, 85, .14);
+    }
+
+
+    .copy-hint {
+      margin: 13px 0 0;
+      color: #85837c;
+      font-size: .72rem;
+    }
+
+
+    .site-footer {
+      padding-block: 24px;
+      border-top: 1px solid var(--line);
+      color: #929087;
+      font-size: .75rem;
+    }
+
+
+    .footer-inner a {
+      color: #c8b38e;
+      text-decoration: none;
+    }
+
+
+    .footer-inner a:hover { color: var(--gold-light); }
+
+
+    @media (max-width: 900px) {
+      .staff-card { grid-template-columns: minmax(240px, .9fr) 1.1fr; }
+    }
+
+
+    @media (max-width: 700px) {
+      .container { width: min(100% - 34px, var(--max-width)); }
+      .header-inner { min-height: 68px; gap: 10px; }
+      .brand-mark { width: 39px; height: 39px; }
+      .brand-name { font-size: 1rem; }
+      .brand-caption { font-size: .56rem; }
+      .main-nav { gap: 9px; }
+      .main-nav a:not(.nav-contact) { display: none; }
+      .main-nav a[href="index.html#sortiment"] { display: inline; font-size: .72rem; }
+      .main-nav .nav-contact { padding: 8px 10px; font-size: .76rem; white-space: nowrap; }
+      .page-intro { padding-block: 54px 25px; }
+      .staff-section { padding-bottom: 61px; }
+      .staff-card { grid-template-columns: 1fr; }
+      .portrait { min-height: 320px; max-height: 430px; }
+      .staff-details { padding: 27px 22px 25px; }
+      .footer-inner { flex-direction: column; gap: 7px; }
+    }
+
+
+    @media (max-width: 420px) {
+      .brand { gap: 8px; }
+      .brand-name { font-size: .88rem; letter-spacing: 0; }
+      .brand-caption { display: none; }
+      .header-inner { gap: 6px; }
+      .main-nav { gap: 7px; }
+      .main-nav a[href="index.html#sortiment"] { font-size: .67rem; }
+      .main-nav .nav-contact { padding: 7px 8px; font-size: .67rem; }
+    }
+
+
+    @media (prefers-reduced-motion: reduce) {
+      html {  }
+    }
