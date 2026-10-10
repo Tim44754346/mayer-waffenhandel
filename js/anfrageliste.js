@@ -6,6 +6,7 @@
     const storageKey = 'mayer-waffenhandel-anfrageliste';
     const legacyStorageKey = storageKey;
     const inquiryBar = document.getElementById('inquiry-bar');
+    const backToTop = document.querySelector('.back-to-top');
     const inquiryLayer = document.getElementById('inquiry-layer');
     const drawer = document.getElementById('inquiry-drawer');
     const itemList = drawer && drawer.querySelector('.inquiry-items');
@@ -23,32 +24,33 @@
     const remainingAmount = drawer && drawer.querySelector('.inquiry-remaining-amount');
     const barSummary = inquiryBar && inquiryBar.querySelector('.inquiry-bar-summary');
     const barDeposit = inquiryBar && inquiryBar.querySelector('.inquiry-deposit-summary');
-    const barDelivery = inquiryBar && inquiryBar.querySelector('.inquiry-delivery-summary');
     const cards = Array.from(document.querySelectorAll('.product-card[data-id]'));
     const money = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 });
     const permitLabels = { klein: 'Kleiner Waffenschein', gross: 'Großer Waffenschein' };
     const colorNames = { schwarz: 'Schwarz', silber: 'Silber', gold: 'Gold' };
     let products = new Map();
     let items = [];
-    let ownedQuantities = Object.create(null);
     let persistenceWarning = '';
     let dataWarning = '';
     let previousFocus = null;
     let memoryOnly = false;
+    let inquiryBarObserver = null;
+    let ringColor = 'schwarz';
+    let clearConfirmTimer = null;
+    let scrollFramePending = false;
 
     function requireMarkup() {
-      if (!inquiryBar || !inquiryLayer || !drawer || !itemList || !emptyMessage ||
+      if (!inquiryBar || !backToTop || !inquiryLayer || !drawer || !itemList || !emptyMessage ||
         !totalLabel || !permitsLabel || !largePermitNotice || !messageField ||
         !copyButton || !clearButton || !status || !closeButton || !depositDetails ||
         !depositAmount || !remainingAmount || !barSummary || !barDeposit ||
-        !barDelivery || cards.length !== 7) {
+        cards.length !== 7) {
         throw new Error('Anfragelisten-Markup oder Produktkarten fehlen.');
       }
       cards.forEach((card) => {
         if (!card.querySelector('.product-add') || !card.querySelector('.modal-inquiry-add') ||
           !card.querySelector('.card-quantity-control input') ||
-          !card.querySelector('.modal-quantity-control input') ||
-          !card.querySelector('.owned-quantity-input') ||
+          !card.querySelector('.modal-item-quantity-control input') ||
           !card.querySelector('.inquiry-open-modal')) {
           throw new Error(`Mengensteuerungen fehlen für Produkt "${card.dataset.id}".`);
         }
@@ -56,7 +58,7 @@
     }
 
     function formatPrice(price) {
-      return `${money.format(price)} €`;
+      return `${money.format(price)}\u00a0€`;
     }
 
     function productFromCard(card) {
@@ -129,14 +131,14 @@
         : product.name;
     }
 
-    function colorForCard(card) {
+    function selectedRingColor(card) {
       const selected = card.querySelector('.ring-radio:checked');
-      return selected && colorNames[selected.value] ? selected.value : 'schwarz';
+      const value = selected ? selected.value : ringColor;
+      return colorNames[value] ? value : 'schwarz';
     }
 
-    function currentOwnedKey(card) {
-      const product = products.get(card.dataset.id);
-      return itemIdFor(product, product.id === 'schlagring' ? colorForCard(card) : '');
+    function colorForCard(card) {
+      return products.get(card.dataset.id).id === 'schlagring' ? selectedRingColor(card) : '';
     }
 
     function allowedStoredId(id) {
@@ -154,12 +156,11 @@
       };
     }
 
-    function parseStoredState(raw, legacyFormat) {
+    function parseStoredState(raw) {
       const sourceItems = Array.isArray(raw) ? raw : raw && raw.items;
       if (!Array.isArray(sourceItems)) throw new Error('Gespeicherte Anfrageliste hat ein ungültiges Format.');
 
       const normalizedItems = [];
-      let available = MAX_MENGE;
       sourceItems.forEach((entry) => {
         if (!entry || typeof entry.id !== 'string' || !allowedStoredId(entry.id) ||
           !Number.isSafeInteger(entry.quantity) || entry.quantity < 1) return;
@@ -174,25 +175,16 @@
         } else {
           normalizedItems.push(makeItem(product, isRingItemId(entry.id) ? itemColor(entry.id) : '', desired));
         }
-        available = Math.max(0, MAX_MENGE - normalizedItems.reduce((sum, item) => sum + item.quantity, 0));
       });
 
-      const normalizedOwned = Object.create(null);
-      const savedOwned = !legacyFormat && raw && raw.owned && typeof raw.owned === 'object'
-        ? raw.owned
-        : {};
-      Object.keys(savedOwned).forEach((id) => {
-        const validId = allowedStoredId(id);
-        const quantity = savedOwned[id];
-        if (validId && Number.isSafeInteger(quantity) && quantity >= 0 && quantity <= MAX_MENGE) {
-          normalizedOwned[id] = quantity;
-        }
-      });
-      return { items: normalizedItems, owned: normalizedOwned };
+      const savedRingColor = raw && colorNames[raw.ringColor]
+        ? raw.ringColor
+        : 'schwarz';
+      return { items: normalizedItems, ringColor: savedRingColor };
     }
 
     function serializedState() {
-      return JSON.stringify({ items, owned: ownedQuantities });
+      return JSON.stringify({ items, ringColor });
     }
 
     function removeLegacyValue() {
@@ -217,12 +209,20 @@
 
       if (localValue !== null) {
         try {
-          const loaded = parseStoredState(JSON.parse(localValue), false);
+          const stored = JSON.parse(localValue);
+          const loaded = parseStoredState(stored);
           items = loaded.items;
-          ownedQuantities = loaded.owned;
+          ringColor = loaded.ringColor;
+          if (stored && !Array.isArray(stored) && Object.prototype.hasOwnProperty.call(stored, 'owned')) {
+            try {
+              localStore.setItem(storageKey, serializedState());
+            } catch (error) {
+              console.warn('Gespeicherte Bestandsangaben konnten nicht entfernt werden.', error);
+            }
+          }
         } catch (error) {
           items = [];
-          ownedQuantities = Object.create(null);
+          ringColor = 'schwarz';
         }
         removeLegacyValue();
         return;
@@ -238,19 +238,19 @@
 
       let loaded;
       try {
-        loaded = parseStoredState(JSON.parse(legacyValue), true);
+        loaded = parseStoredState(JSON.parse(legacyValue));
       } catch (error) {
         return;
       }
       try {
-        const serialized = JSON.stringify({ items: loaded.items, owned: loaded.owned });
+        const serialized = JSON.stringify({ items: loaded.items, ringColor: loaded.ringColor });
         localStore.setItem(storageKey, serialized);
         items = loaded.items;
-        ownedQuantities = loaded.owned;
+        ringColor = loaded.ringColor;
         removeLegacyValue();
       } catch (error) {
         items = [];
-        ownedQuantities = Object.create(null);
+        ringColor = 'schwarz';
       }
     }
 
@@ -294,11 +294,9 @@
     }
 
     function requestText() {
-      const lines = items.map((item) => {
-        const owned = ownedQuantities[item.id] || 0;
-        const ownedText = owned > 0 ? ` (habe bereits ${owned})` : '';
-        return `${item.quantity}× ${item.name} (${formatPrice(item.price * item.quantity)})${ownedText}`;
-      });
+      const lines = items.map((item) =>
+        `${item.quantity}× ${item.name} (${formatPrice(item.price * item.quantity)})`
+      );
       const permits = requiredPermits();
       let result = `Guten Tag, ich interessiere mich für folgende Artikel von Mayer Waffenhandel: ${lines.join(', ')}. Gesamt: ${formatPrice(totalPrice())}. Benötigte Berechtigung: ${permits.join(' und ')}.`;
       const deposit = depositValues();
@@ -324,80 +322,35 @@
       return entry ? entry.quantity : 0;
     }
 
-    function badgeLabel(owned, requested) {
-      if (owned > 0) return `Habe ${owned} · Anfrage ${requested}`;
-      return `In Anfrage: ${requested}`;
-    }
-
-    function updateBadges() {
-      cards.forEach((card) => {
-        const productId = card.dataset.id;
-        const selectedId = itemIdFor(products.get(productId), productId === 'schlagring' ? colorForCard(card) : '');
-        const requested = quantityFor(selectedId);
-        const owned = ownedQuantities[selectedId] || 0;
-        card.querySelectorAll('.inquiry-badge').forEach((badge) => {
-          badge.hidden = owned === 0 && requested === 0;
-          badge.textContent = badgeLabel(owned, requested);
-          badge.dataset.badgeItem = selectedId;
-        });
-        const ownedInput = card.querySelector('.owned-quantity-input');
-        if (ownedInput && document.activeElement !== ownedInput) {
-          ownedInput.value = String(owned);
-        }
-        const openButton = card.querySelector('.inquiry-open-modal');
-        openButton.disabled = items.length === 0;
-        openButton.textContent = `Anfrageliste öffnen (${totalCount()})`;
-        if (productId === 'schlagring') {
-          const color = colorForCard(card);
-          const colorBadge = card.querySelector('.ring-color-badge');
-          if (colorBadge) colorBadge.textContent = `Farbe: ${colorNames[color]}`;
-        }
-      });
-    }
-
-    function updateStepButtons(input) {
-      const control = input.closest('.quantity-control');
-      if (!control) return;
-      const isOwned = input.dataset.field === 'owned';
-      const min = isOwned ? 0 : 1;
-      const max = isOwned ? MAX_MENGE : Number(input.max);
-      const raw = input.value.trim();
-      const valid = /^\d+$/.test(raw) && Number.isSafeInteger(Number(raw));
-      const value = valid ? Number(raw) : NaN;
-      control.querySelectorAll('.quantity-step').forEach((button) => {
-        const direction = Number(button.dataset.step);
-        button.disabled = input.disabled || !valid ||
-          (direction < 0 && value <= min) ||
-          (direction > 0 && (!Number.isFinite(max) || value >= max));
-      });
-    }
-
-    function updateQuantityInputs() {
+    function updateProductControls() {
       const remaining = remainingCapacity();
       const full = remaining === 0;
       const limitMessage = `Höchstmenge der Liste: ${MAX_MENGE} Stück.`;
       cards.forEach((card) => {
-        card.querySelectorAll('.inquiry-quantity-input[data-field="quantity"]').forEach((input) => {
-          input.disabled = full;
-          if (full) {
-            input.removeAttribute('max');
-          } else {
-            input.max = String(remaining);
-            const value = Number(input.value);
-            if (!Number.isSafeInteger(value) || value < 1 || value > remaining) {
-              input.value = String(Math.max(1, Math.min(remaining, Number.isSafeInteger(value) ? value : 1)));
-            }
-          }
-          updateStepButtons(input);
-        });
-        card.querySelectorAll('.owned-quantity-input').forEach((input) => {
-          input.max = String(MAX_MENGE);
-          input.disabled = false;
-          updateStepButtons(input);
+        const product = products.get(card.dataset.id);
+        const color = product.id === 'schlagring' ? ringColor : '';
+        const itemId = itemIdFor(product, color);
+        const quantity = quantityFor(itemId);
+        const maximum = Math.min(MAX_MENGE, quantity + remaining);
+
+        card.querySelectorAll('.item-quantity-control').forEach((control) => {
+          const input = control.querySelector('.direct-quantity-input');
+          control.hidden = quantity === 0;
+          if (document.activeElement !== input) input.value = String(quantity);
+          input.max = String(maximum);
+          input.disabled = full && quantity === 0;
+          control.querySelectorAll('.item-quantity-step').forEach((button) => {
+            const step = Number(button.dataset.itemStep);
+            button.disabled = input.disabled || (step > 0 && (full || quantity >= maximum));
+          });
         });
         card.querySelectorAll('.product-add, .modal-inquiry-add').forEach((button) => {
+          button.hidden = quantity > 0;
           button.disabled = full;
         });
+        const openButton = card.querySelector('.inquiry-open-modal');
+        openButton.disabled = items.length === 0;
+        openButton.textContent = `Anfrageliste öffnen (${totalCount()})`;
         [card.querySelector('.product-add-status'), card.querySelector('.modal-add-status')]
           .filter(Boolean)
           .forEach((feedback) => {
@@ -409,6 +362,13 @@
               setMessage(feedback, feedback.textContent.replace(`. ${limitMessage}`, ''), false);
             }
           });
+        if (product.id === 'schlagring') {
+          card.querySelectorAll('.ring-radio').forEach((radio) => {
+            radio.checked = radio.value === ringColor;
+          });
+          const colorBadge = card.querySelector('.ring-color-badge');
+          if (colorBadge) colorBadge.textContent = `Farbe: ${colorNames[ringColor]}`;
+        }
       });
     }
 
@@ -416,18 +376,60 @@
       const deposit = depositValues();
       depositDetails.hidden = !deposit;
       barDeposit.hidden = !deposit;
-      barDelivery.hidden = !deposit;
       if (deposit) {
         depositAmount.textContent = `Anzahlung (50 %): ${formatPrice(deposit.deposit)}`;
         remainingAmount.textContent = `Rest bei Übergabe: ${formatPrice(deposit.remaining)}`;
-        barDeposit.textContent = `Anzahlung (50 %): ${formatPrice(deposit.deposit)} · Rest bei Übergabe: ${formatPrice(deposit.remaining)}`;
-        barDelivery.textContent = 'Die Ware wird nach Zahlungseingang der Anzahlung übergeben.';
+        barDeposit.textContent = `Anzahlung ${formatPrice(deposit.deposit)}`;
       } else {
         depositAmount.textContent = '';
         remainingAmount.textContent = '';
         barDeposit.textContent = '';
-        barDelivery.textContent = '';
       }
+    }
+
+    function updateBackToTop() {
+      const visible = window.scrollY > window.innerHeight;
+      backToTop.hidden = !visible;
+      backToTop.tabIndex = visible ? 0 : -1;
+    }
+
+    function bindBackToTop() {
+      const scheduleUpdate = () => {
+        if (scrollFramePending) return;
+        scrollFramePending = true;
+        window.requestAnimationFrame(() => {
+          scrollFramePending = false;
+          updateBackToTop();
+        });
+      };
+      window.addEventListener('scroll', scheduleUpdate, { passive: true });
+      window.addEventListener('resize', scheduleUpdate);
+      updateBackToTop();
+    }
+
+    function updateInquiryBarSpacing() {
+      if (inquiryBar.hidden) {
+        document.body.classList.remove('inquiry-bar-visible');
+        document.documentElement.style.removeProperty('--inquiry-bar-height');
+        return;
+      }
+      const height = Math.ceil(inquiryBar.getBoundingClientRect().height);
+      document.documentElement.style.setProperty('--inquiry-bar-height', `${height}px`);
+      document.body.classList.add('inquiry-bar-visible');
+    }
+
+    function observeInquiryBarSize() {
+      if (typeof ResizeObserver === 'function') {
+        try {
+          inquiryBarObserver = new ResizeObserver(updateInquiryBarSpacing);
+          inquiryBarObserver.observe(inquiryBar);
+          return;
+        } catch (error) {
+          console.warn('ResizeObserver für die Anfrageliste nicht verfügbar; resize-Ersatz wird verwendet.', error);
+          inquiryBarObserver = null;
+        }
+      }
+      window.addEventListener('resize', updateInquiryBarSpacing);
     }
 
     function render() {
@@ -443,6 +445,11 @@
       messageField.value = items.length ? requestText() : '';
       copyButton.disabled = items.length === 0;
       clearButton.disabled = items.length === 0;
+      cards.forEach((card) => {
+        card.querySelectorAll('.product-add-status, .modal-add-status').forEach((feedback) => {
+          setMessage(feedback, '', false);
+        });
+      });
 
       items.forEach((item) => {
         const row = document.createElement('li');
@@ -452,17 +459,15 @@
         const name = document.createElement('span');
         name.className = 'inquiry-item-name';
         name.textContent = item.name;
-        const owned = ownedQuantities[item.id] || 0;
         const price = document.createElement('span');
         price.className = 'inquiry-item-price';
-        price.textContent = `${formatPrice(item.price)} je Stück · ${formatPrice(item.price * item.quantity)} gesamt${owned > 0 ? ` · Habe ${owned}` : ''}`;
+        price.textContent = `${formatPrice(item.price)} je Stück · ${formatPrice(item.price * item.quantity)} gesamt`;
         details.append(name, price);
 
         const quantity = document.createElement('div');
         quantity.className = 'inquiry-quantity';
         quantity.setAttribute('aria-label', `Menge für ${item.name}`);
         const decrement = makeControl('−', 'inquiry-quantity-button', 'decrement', item.id, `Menge von ${item.name} verringern`);
-        decrement.disabled = item.quantity <= 1;
         const output = document.createElement('output');
         output.textContent = String(item.quantity);
         const increment = makeControl('+', 'inquiry-quantity-button', 'increment', item.id, `Menge von ${item.name} erhöhen`);
@@ -474,8 +479,9 @@
       });
 
       updateDepositDisplay();
-      updateBadges();
-      updateQuantityInputs();
+      updateInquiryBarSpacing();
+      updateProductControls();
+      updateBackToTop();
       const warning = persistenceWarning || dataWarning;
       status.textContent = warning;
       if (warning) status.dataset.error = 'true';
@@ -492,71 +498,73 @@
       else element.removeAttribute('data-error');
     }
 
-    function addItem(card, product, requestedQuantity, feedback, reachedLimit) {
-      const remaining = remainingCapacity();
-      if (remaining === 0) {
+    function statusName(product, color) {
+      return itemName(product, color);
+    }
+
+    function announceItemQuantity(product, color, quantity, feedback, limited) {
+      const name = statusName(product, color);
+      const message = quantity > 0
+        ? `${name}: ${quantity} in der Liste${limited ? `. Höchstmenge der Liste: ${MAX_MENGE} Stück.` : ''}`
+        : `${name}: aus der Liste entfernt`;
+      setMessage(feedback, message, limited);
+    }
+
+    function setItemQuantity(card, product, color, requestedQuantity, feedback) {
+      const id = itemIdFor(product, color);
+      const current = quantityFor(id);
+      const maximum = Math.min(MAX_MENGE, current + remainingCapacity());
+      const quantity = Math.max(0, Math.min(maximum, requestedQuantity));
+      const index = items.findIndex((item) => item.id === id);
+      if (quantity === 0) {
+        if (index >= 0) items.splice(index, 1);
+      } else if (index >= 0) {
+        items[index].quantity = quantity;
+      } else {
+        items.push(makeItem(product, color, quantity));
+      }
+      saveState();
+      render();
+      announceItemQuantity(product, color, quantity, feedback, requestedQuantity > maximum || totalCount() === MAX_MENGE);
+    }
+
+    function addOne(card, product, feedback) {
+      const color = currentProductColor(card, product);
+      const id = itemIdFor(product, color);
+      if (remainingCapacity() === 0) {
         setMessage(feedback, `Höchstmenge der Liste: ${MAX_MENGE} Stück.`, true);
-        render();
         return;
       }
-      const quantity = Math.min(requestedQuantity, remaining);
-      const color = currentProductColor(card, product);
-      const item = makeItem(product, color, quantity);
-      const existing = items.find((candidate) => candidate.id === item.id);
-      if (existing) existing.quantity += quantity;
-      else items.push(item);
-      saveState();
-      const atLimit = requestedQuantity >= remaining;
-      render();
-      setMessage(
-        feedback,
-        reachedLimit || atLimit
-          ? `Hinzugefügt: ${quantity}×. Höchstmenge der Liste: ${MAX_MENGE} Stück.`
-          : `Hinzugefügt: ${quantity}×`,
-        reachedLimit || atLimit
-      );
+      setItemQuantity(card, product, color, quantityFor(id) + 1, feedback);
     }
 
-    function clampInput(input, announceCorrection) {
-      const fieldType = input.dataset.field;
-      const min = fieldType === 'owned' ? 0 : 1;
-      const max = fieldType === 'owned' ? MAX_MENGE : remainingCapacity();
-      const raw = input.value.trim();
-      const valid = /^\d+$/.test(raw);
-      let value = valid ? Number(raw) : min;
-      if (!Number.isSafeInteger(value)) value = min;
-      if (fieldType === 'quantity' && valid && Number(raw) > max && max > 0) {
-        input.dataset.requestLimited = 'true';
-      } else if (fieldType === 'quantity') {
-        delete input.dataset.requestLimited;
-      }
-      value = Math.max(min, Math.min(max, value));
-      if (fieldType !== 'owned' && max === 0) return null;
-      const corrected = !valid || String(value) !== raw;
-      input.value = String(value);
-      if (announceCorrection && corrected) {
-        const card = input.closest('.product-card');
-        const feedback = input.closest('.modal-info')
-          ? card.querySelector('.modal-add-status')
-          : card.querySelector('.product-add-status');
-        setMessage(feedback, `Menge angepasst: ${value}`, false);
-      }
-      return value;
-    }
-
-    function saveOwnedInput(input) {
+    function commitQuantityInput(input) {
       const card = input.closest('.product-card');
-      const key = currentOwnedKey(card);
-      const value = clampInput(input, true);
-      if (value === null) return;
-      ownedQuantities[key] = value;
-      saveState();
-      render();
-    }
-
-    function fieldForAction(button) {
-      const container = button.closest('.product-info, .modal-info');
-      return container && container.querySelector('.inquiry-quantity-input[data-field="quantity"]');
+      const product = products.get(card.dataset.id);
+      const color = currentProductColor(card, product);
+      const id = itemIdFor(product, color);
+      const current = quantityFor(id);
+      const feedback = input.closest('.modal-info')
+        ? card.querySelector('.modal-add-status')
+        : card.querySelector('.product-add-status');
+      const raw = input.value.trim();
+      if (!/^\d+$/.test(raw) || !Number.isSafeInteger(Number(raw))) {
+        input.value = String(current);
+        delete input.dataset.dirty;
+        setMessage(feedback, `${statusName(product, color)}: ungültige Eingabe; Menge bleibt ${current}.`, true);
+        return;
+      }
+      const requested = Number(raw);
+      const maximum = Math.min(MAX_MENGE, current + remainingCapacity());
+      delete input.dataset.dirty;
+      setItemQuantity(card, product, color, requested, feedback);
+      if (requested > maximum) {
+        setMessage(
+          feedback,
+          `${statusName(product, color)}: ${quantityFor(id)} in der Liste. Höchstmenge der Liste: ${MAX_MENGE} Stück.`,
+          true
+        );
+      }
     }
 
     function bindProductActions() {
@@ -572,17 +580,7 @@
         [[cardButton, cardStatus], [modalButton, modalStatus]].forEach(([button, feedback]) => {
           button.addEventListener('click', () => {
             try {
-              const input = fieldForAction(button);
-              const reachedLimit = Boolean(input && input.dataset.requestLimited === 'true');
-              if (input) delete input.dataset.requestLimited;
-              const quantity = input ? clampInput(input, true) : null;
-              if (quantity === null) {
-                setMessage(feedback, `Höchstmenge der Liste: ${MAX_MENGE} Stück.`, true);
-                return;
-              }
-              addItem(card, product, quantity, feedback, reachedLimit);
-              if (input) input.value = '1';
-              updateQuantityInputs();
+              addOne(card, product, feedback);
             } catch (error) {
               console.error('Artikel konnte nicht zur Anfrageliste hinzugefügt werden.', error);
             }
@@ -593,56 +591,61 @@
           button.addEventListener('click', openDrawer);
         });
 
-        card.querySelectorAll('.inquiry-quantity-input').forEach((input) => {
+        card.querySelectorAll('.direct-quantity-input').forEach((input) => {
           input.addEventListener('blur', () => {
             try {
-              if (input.dataset.field === 'owned') saveOwnedInput(input);
-              else {
-                clampInput(input, true);
-                updateQuantityInputs();
-              }
+              if (input.dataset.dirty === 'true') commitQuantityInput(input);
             } catch (error) {
               console.error('Mengenfeld konnte nicht korrigiert werden.', error);
             }
           });
+          input.addEventListener('change', () => {
+            if (input.dataset.field === 'quantity' && input.dataset.dirty === 'true') {
+              try {
+                commitQuantityInput(input);
+              } catch (error) {
+                console.error('Direkte Menge konnte nicht übernommen werden.', error);
+              }
+            }
+          });
           input.addEventListener('input', () => {
-            delete input.dataset.requestLimited;
-            updateStepButtons(input);
+            input.dataset.dirty = 'true';
           });
         });
 
         card.querySelectorAll('.ring-radio').forEach((radio) => {
           radio.addEventListener('change', () => {
             try {
-              updateBadges();
+              ringColor = radio.value;
+              saveState();
+              render();
             } catch (error) {
               console.error('Schlagringfarbe konnte nicht aktualisiert werden.', error);
             }
           });
         });
-      });
-    }
-
-    function bindQuantitySteps() {
-      document.addEventListener('click', (event) => {
-        try {
-          const target = event.target;
-          const button = target instanceof Element ? target.closest('.quantity-step') : null;
-          if (!button || button.disabled) return;
-          const input = document.getElementById(button.dataset.stepTarget);
-          if (!input || input.disabled) return;
-          const type = input.dataset.field;
-          const min = type === 'owned' ? 0 : 1;
-          const max = type === 'owned' ? MAX_MENGE : remainingCapacity();
-          if (type !== 'owned' && max === 0) return;
-          const current = clampInput(input, false);
-          const next = Math.max(min, Math.min(max, current + Number(button.dataset.step)));
-          input.value = String(next);
-          if (type === 'owned') saveOwnedInput(input);
-          else updateQuantityInputs();
-        } catch (error) {
-          console.error('Mengensteuerung konnte nicht angewendet werden.', error);
-        }
+        card.querySelectorAll('.item-quantity-step').forEach((button) => {
+          button.addEventListener('click', () => {
+            try {
+              const color = currentProductColor(card, product);
+              const id = itemIdFor(product, color);
+              const current = quantityFor(id);
+              const step = Number(button.dataset.itemStep);
+              if (step > 0 && remainingCapacity() === 0) {
+                setMessage(
+                  button.closest('.modal-info') ? modalStatus : cardStatus,
+                  `Höchstmenge der Liste: ${MAX_MENGE} Stück.`,
+                  true
+                );
+                return;
+              }
+              const feedback = button.closest('.modal-info') ? modalStatus : cardStatus;
+              setItemQuantity(card, product, color, current + step, feedback);
+            } catch (error) {
+              console.error('Direkte Mengensteuerung konnte nicht angewendet werden.', error);
+            }
+          });
+        });
       });
     }
 
@@ -663,8 +666,9 @@
           if (index < 0) return;
           if (action === 'increment' && remainingCapacity() > 0) {
             items[index].quantity += 1;
-          } else if (action === 'decrement' && items[index].quantity > 1) {
-            items[index].quantity -= 1;
+          } else if (action === 'decrement') {
+            if (items[index].quantity > 1) items[index].quantity -= 1;
+            else items.splice(index, 1);
           } else if (action === 'remove') {
             items.splice(index, 1);
           } else {
@@ -736,6 +740,18 @@
 
       clearButton.addEventListener('click', () => {
         try {
+          if (!clearConfirmTimer) {
+            clearButton.textContent = 'Wirklich leeren?';
+            status.textContent = 'Zum Leeren bitte innerhalb von 3 Sekunden erneut tippen.';
+            clearConfirmTimer = window.setTimeout(() => {
+              clearConfirmTimer = null;
+              clearButton.textContent = 'Liste leeren';
+            }, 3000);
+            return;
+          }
+          window.clearTimeout(clearConfirmTimer);
+          clearConfirmTimer = null;
+          clearButton.textContent = 'Liste leeren';
           items = [];
           saveState();
           render();
@@ -787,10 +803,11 @@
       products = await readProducts();
       loadState();
       bindProductActions();
-      bindQuantitySteps();
       bindQuantityActions();
       bindDrawer();
       bindCopy();
+      observeInquiryBarSize();
+      bindBackToTop();
       render();
     }
 

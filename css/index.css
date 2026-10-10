@@ -311,6 +311,10 @@
     }
 
     .inquiry-badge[hidden] { display: none; }
+    .item-quantity-control[hidden],
+    .product-add[hidden],
+    .modal-inquiry-add[hidden],
+    .back-to-top[hidden] { display: none; }
 
     .quantity-control {
       display: flex;
@@ -414,15 +418,42 @@
 
     .modal-inquiry-badge { margin: 0 0 10px; }
 
-    .owned-quantity-label {
-      margin: 10px 0 4px;
-      color: #ded9ce;
-      font-size: .8rem;
+    .item-quantity-control {
+      width: fit-content;
+      min-height: 44px;
+      padding: 3px;
+      border: 1px solid var(--line);
+      background: #171816;
     }
 
-    .owned-quantity-control { margin-bottom: 13px; }
+    .direct-quantity-input {
+      width: 58px;
+      min-width: 48px;
+      border: 0;
+      text-align: center;
+    }
 
-    .owned-quantity-control .quantity-label { display: none; }
+    .item-quantity-step {
+      width: 44px;
+      min-width: 44px;
+      border: 0;
+      background: transparent;
+    }
+
+    .item-quantity-step:disabled,
+    .product-add:disabled { opacity: .48; cursor: not-allowed; }
+
+    .ring-swatch {
+      width: 13px;
+      height: 13px;
+      flex: 0 0 13px;
+      border: 1px solid rgba(255, 255, 255, .38);
+      border-radius: 50%;
+    }
+
+    .swatch-schwarz { background: #1c1d1b; }
+    .swatch-silber { background: #b9b9b3; }
+    .swatch-gold { background: #c59a55; }
 
     .inquiry-open-modal {
       min-height: 44px;
@@ -469,6 +500,13 @@
       text-decoration: none;
     }
 
+    body.inquiry-bar-visible {
+      padding-bottom: calc(var(--inquiry-bar-height, 0px) + 32px);
+    }
+
+    body.inquiry-bar-visible .back-to-top {
+      bottom: calc(var(--inquiry-bar-height, 0px) + 32px);
+    }
 
     .inquiry-bar {
       position: fixed;
@@ -485,7 +523,7 @@
       background: #20211f;
       color: var(--gold-light);
       font: inherit;
-      font-size: .93rem;
+      font-size: .88rem;
       font-weight: 700;
       text-align: center;
       cursor: pointer;
@@ -495,16 +533,17 @@
 
     .inquiry-bar span[hidden] { display: none; }
 
-    .inquiry-deposit-summary,
-    .inquiry-delivery-summary {
-      margin-top: 3px;
-      font-size: .78rem;
-      line-height: 1.4;
+    .inquiry-bar-summary { white-space: nowrap; }
+
+    .inquiry-deposit-summary {
+      margin-top: 2px;
+      font-size: .72rem;
+      line-height: 1.2;
+      white-space: nowrap;
     }
 
-    .inquiry-delivery-summary { color: #ded9ce; font-weight: 400; }
+    .inquiry-bar[hidden] { display: none; }
 
-    .inquiry-bar[hidden],
     .inquiry-layer[hidden] { display: none; }
 
 
@@ -1476,12 +1515,15 @@
       .card-quantity-control .quantity-label { flex-basis: 100%; }
       .permit { min-height: 43px; font-size: .67rem; }
       .product-add { width: 100%; min-width: 0; }
+      .card-quantity-control { width: 100%; justify-content: space-between; }
       .product-actions { width: 100%; justify-content: space-between; }
       .permit-cards { grid-template-columns: minmax(0, 1fr); }
       .permit-card { grid-template-columns: minmax(0, 1fr); padding: 16px; }
       .permit-card-image { width: min(100%, 180px); }
       .inquiry-bar { right: 8px; bottom: 8px; left: 8px; width: calc(100% - 16px); }
       .back-to-top { right: 8px; bottom: 72px; }
+      body.inquiry-bar-visible { padding-bottom: calc(var(--inquiry-bar-height, 0px) + 24px); }
+      body.inquiry-bar-visible .back-to-top { bottom: calc(var(--inquiry-bar-height, 0px) + 24px); }
       .inquiry-layer { align-items: flex-end; padding: 8px; }
       .inquiry-drawer { max-height: calc(100vh - 16px); padding: 18px; }
       .inquiry-item { grid-template-columns: minmax(0, 1fr) auto; }
